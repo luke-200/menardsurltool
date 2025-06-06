@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Menards Factory Number Link Generator</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f4f8fb;
+      color: #333;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: row;
+    }
+    .sidebar {
+      width: 250px;
+      background: #003366;
+      color: white;
+      padding: 20px;
+      min-height: 100vh;
+    }
+    .container {
+      flex: 1;
+      padding: 40px;
+      background: #f9f9f9;
+    }
+    h1 {
+      text-align: center;
+      color: #003366;
+    }
+    input[type="file"] {
+      width: 100%;
+      padding: 10px;
+      margin: 20px 0;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    button {
+      background-color: #003366;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin: 10px 10px 10px 0;
+    }
+    button:hover {
+      background-color: #0055a5;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: left;
+    }
+    th {
+      background-color: #003366;
+      color: white;
+    }
+    td a {
+      color: #003366;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <h2>Info Panel</h2>
+    <p>📄 Upload a CSV file with one column: <strong>Factory Number</strong></p>
+    <p>🔗 Generates Menards search URLs</p>
+    <p>📤 Export or copy the links for later use</p>
+  </div>
+  <div class="container">
+    <h1>Menards Link Generator</h1>
+
+    <input type="file" id="csvUpload" accept=".csv" />
+
+    <div id="resultsContainer"></div>
+
+    <div id="actions" style="display:none;">
+      <button onclick="copyToClipboard()">Copy URLs</button>
+      <button onclick="exportCSV()">Export as CSV</button>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById("csvUpload").addEventListener("change", function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const text = evt.target.result;
+        const lines = text.split(/\r?\n/).filter(Boolean);
+        const headers = lines[0].split(",").map(h => h.trim().toLowerCase());
+
+        const factoryIndex = headers.indexOf("factory number");
+
+        if (factoryIndex === -1) {
+          alert("CSV must contain a 'Factory Number' column.");
+          return;
+        }
+
+        const urls = [];
+
+        for (let i = 1; i < lines.length; i++) {
+          const cols = lines[i].split(",");
+          const factoryNum = cols[factoryIndex]?.trim();
+          if (factoryNum) {
+            const url = `https://www.menards.com/main/search.html?search=${factoryNum}`;
+            urls.push({ factoryNum, url });
+          }
+        }
+
+        if (urls.length === 0) {
+          document.getElementById("resultsContainer").innerHTML = "<p>No valid factory numbers found.</p>";
+          return;
+        }
+
+        let tableHTML = "<table><thead><tr><th>Factory Number</th><th>Search URL</th></tr></thead><tbody>";
+        urls.forEach(item => {
+          tableHTML += `<tr><td>${item.factoryNum}</td><td><a href="${item.url}" target="_blank">${item.url}</a></td></tr>`;
+        });
+        tableHTML += "</tbody></table>";
+
+        document.getElementById("resultsContainer").innerHTML = tableHTML;
+        document.getElementById("actions").style.display = "block";
+
+        // Store URLs for later use
+        window.generatedURLs = urls.map(item => item.url);
+      };
+      reader.readAsText(file);
+    });
+
+    function copyToClipboard() {
+      if (!window.generatedURLs || window.generatedURLs.length === 0) return;
+      navigator.clipboard.writeText(window.generatedURLs.join("\n")).then(() => {
+        alert("Copied to clipboard!");
+      });
+    }
+
+    function exportCSV() {
+      if (!window.generatedURLs || window.generatedURLs.length === 0) return;
+      const blob = new Blob([window.generatedURLs.join("\r\n")], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "menards_links.csv";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  </script>
+</body>
+</html>
